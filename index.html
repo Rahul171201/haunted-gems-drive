@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gem Collector Game</title>
+    <style>
+      body { font-family: sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; }
+      canvas { border: 2px solid #000; background-color: #fff; }
+      #score { position: absolute; top: 20px; left: 20px; font-size: 20px; }
+    </style>
+  </head>
+  <body>
+    <div id="score">Score: 0</div>
+    <canvas id="gameCanvas" width="500" height="500"></canvas>
+    <script>
+         const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const gridSize = 10;
+      const cellSize = 50;
+      const directions = {
+        ArrowUp: [-1, 0],
+        ArrowDown: [1, 0],
+        ArrowLeft: [0, -1],
+        ArrowRight: [0, 1],
+      };
+
+      let player = { x: 0, y: 0 };
+      let ghost = { x: -1, y: -1 };
+      let gems = [];
+      let score = 0;
+      let gameOver = false;
+
+      function randomPosition() {
+        return {
+          x: Math.floor(Math.random() * gridSize),
+          y: Math.floor(Math.random() * gridSize),
+        };
+      }
+
+      function spawnGems() {
+        gems = [];
+        for (let i = 0; i < 5; i++) {
+          let pos;
+          do {
+            pos = randomPosition();
+          } while (
+            gems.some(g => g.x === pos.x && g.y === pos.y) ||
+            (pos.x === player.x && pos.y === player.y)
+          );
+          gems.push(pos);
+        }
+      }
+
+      function spawnGhost() {
+        let pos;
+        do {
+          pos = randomPosition();
+        } while (
+          gems.some(g => g.x === pos.x && g.y === pos.y) ||
+          (pos.x === player.x && pos.y === player.y)
+        );
+        ghost = pos;
+      }
+
+      function movePlayer(dx, dy) {
+        if (gameOver) return;
+        const newX = player.x + dx;
+        const newY = player.y + dy;
+        if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize) {
+          player = { x: newX, y: newY };
+          collectGem();
+          checkGameOver();
+          render();
+        }
+      }
+
+      function collectGem() {
+        for (let i = 0; i < gems.length; i++) {
+          if (gems[i].x === player.x && gems[i].y === player.y) {
+            gems.splice(i, 1);
+            score += 10;
+            document.getElementById('score').textContent = `Score: ${score}`;
+            if (gems.length === 0) spawnGems();
+            break;
+          }
+        }
+      }
+
+      function moveGhost() {
+        if (ghost.x === -1 || gameOver) return;
+        const dx = Math.sign(player.x - ghost.x);
+        const dy = Math.sign(player.y - ghost.y);
+
+        // Prioritize horizontal movement if both needed
+        if (dx !== 0) {
+          ghost.x += dx;
+        } else if (dy !== 0) {
+          ghost.y += dy;
+        }
+
+        checkGameOver();
+        render();
+      }
+
+      function checkGameOver() {
+        if (player.x === ghost.x && player.y === ghost.y) {
+          gameOver = true;
+          alert(`👻 Game Over! Final Score: ${score}`);
+        }
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw player
+        ctx.fillStyle = 'lightblue';
+        ctx.fillRect(player.y * cellSize, player.x * cellSize, cellSize, cellSize);
+
+        // Draw ghost
+        if (ghost.x !== -1) {
+          ctx.fillStyle = 'red';
+          ctx.fillRect(ghost.y * cellSize, ghost.x * cellSize, cellSize, cellSize);
+        }
+
+        // Draw gems
+        ctx.fillStyle = 'gold';
+        gems.forEach(g =>
+          ctx.fillRect(g.y * cellSize, g.x * cellSize, cellSize, cellSize)
+        );
+
+        // Draw grid
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= gridSize; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * cellSize, 0);
+          ctx.lineTo(i * cellSize, canvas.height);
+          ctx.moveTo(0, i * cellSize);
+          ctx.lineTo(canvas.width, i * cellSize);
+          ctx.stroke();
+        }
+      }
+
+      document.addEventListener('keydown', e => {
+        const [dx, dy] = directions[e.key] || [0, 0];
+        movePlayer(dx, dy);
+      });
+
+      spawnGems();
+
+      // Start ghost logic after 3 seconds
+      setTimeout(() => {
+        spawnGhost();
+        render(); // Update ghost on board
+        setInterval(() => {
+          if (!gameOver) {
+            moveGhost();
+          }
+        }, 2000); // Ghost moves every 2 seconds
+      }, 3000);
+
+      render();
+    </script>
+  </body>
+</html>
